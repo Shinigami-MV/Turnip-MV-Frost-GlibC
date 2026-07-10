@@ -1,76 +1,117 @@
-name: Build Turnip MV Frost GlibC
+name: Build Turnip MV Eclipse Base Frost GlibC
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    name: Build Eclipse Base
+    runs-on: ubuntu-20.04
+
+    env:
+      DRIVER_NAME: Turnip MV Eclipse Base (Frost GlibC)
+      DRIVER_VERSION: Eclipse-Base-Frost-GlibC
+      MESA_VERSION: mesa-25.1.0
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install packages
+      - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y \
+          sudo apt-get update
+
+          sudo apt-get install -y \
             git \
+            build-essential \
             meson \
             ninja-build \
+            pkg-config \
+            python3 \
+            python3-pip \
             python3-mako \
             python3-yaml \
-            pkg-config \
-            zstd \
-            gcc-aarch64-linux-gnu \
-            g++-aarch64-linux-gnu \
+            python3-ply \
             libdrm-dev \
-            libexpat1-dev
+            libexpat1-dev \
+            libx11-dev \
+            libx11-xcb-dev \
+            libxcb1-dev \
+            libxcb-dri3-dev \
+            libxcb-present-dev \
+            libxcb-randr0-dev \
+            libxcb-shm0-dev \
+            libxcb-sync-dev \
+            libxcb-xfixes0-dev \
+            libxshmfence-dev \
+            libzstd-dev \
+            zlib1g-dev \
+            zstd \
+            file \
+            binutils
 
-      - name: Clone Mesa
+      - name: Clone Mesa source
         run: |
-          git clone --depth=1 https://gitlab.freedesktop.org/mesa/mesa.git
+          git clone \
+            https://gitlab.freedesktop.org/mesa/mesa.git \
+            mesa
 
-      - name: Verify clone
+          cd mesa
+          git checkout "${MESA_VERSION}"
+
+          echo "Mesa version:"
+          git describe --tags --always
+
+          echo "Mesa commit:"
+          git rev-parse HEAD
+
+      - name: Prepare scripts
         run: |
-          ls -la
-          ls -la mesa
+          chmod +x scripts/build.sh
+          chmod +x scripts/package.sh
 
-      - name: Generate cross file
-        shell: bash
+      - name: Build Turnip MV Eclipse Base
         run: |
-          cat <<EOF > aarch64-linux.txt
-          [binaries]
-          c='aarch64-linux-gnu-gcc'
-          cpp='aarch64-linux-gnu-g++'
-          ar='aarch64-linux-gnu-ar'
-          strip='aarch64-linux-gnu-strip'
-          pkgconfig='pkg-config'
+          scripts/build.sh
 
-          [host_machine]
-          system='linux'
-          cpu_family='aarch64'
-          cpu='aarch64'
-          endian='little'
-          EOF
-
-      - name: Configure Mesa
+      - name: Package Frost GlibC driver
         run: |
-          meson setup build mesa \
-            --cross-file=aarch64-linux.txt \
-            -Dvulkan-drivers=freedreno \
-            -Dgallium-drivers= \
-            -Dplatforms=x11 \
-            -Dbuildtype=release
+          scripts/package.sh
 
-      - name: Build
+      - name: Inspect generated binary
         run: |
-          ninja -C build
+          echo "Driver information:"
+          file install/package/usr/lib/libvulkan_freedreno.so
 
-      - name: Upload logs
-        if: always()
+          echo "Dynamic dependencies:"
+          ldd install/package/usr/lib/libvulkan_freedreno.so || true
+
+          echo "ELF dynamic section:"
+          readelf -d install/package/usr/lib/libvulkan_freedreno.so || true
+
+          echo "Generated files:"
+          find output -maxdepth 2 -type f -print
+
+      - name: Upload Eclipse Base driver
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: Turnip-MV-Eclipse-Base-Frost-GlibC
           path: |
-            build/meson-logs
+            output/turnip-MV-Eclipse-Base-Frost-GlibC.tzst
+            output/SHA256SUMS.txt
+            output/build-info.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Turnip-MV-Eclipse-Base-build-logs
+          path: |
+            build/meson-logs/
+          if-no-files-found: ignore
+          retention-days: 14
