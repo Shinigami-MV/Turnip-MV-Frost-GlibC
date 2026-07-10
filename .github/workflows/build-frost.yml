@@ -9,7 +9,7 @@ permissions:
 jobs:
   build:
     name: Build Eclipse Base
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     env:
       DRIVER_NAME: Turnip MV Eclipse Base (Frost GlibC)
