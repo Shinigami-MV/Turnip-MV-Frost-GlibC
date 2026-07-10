@@ -48,34 +48,38 @@ jobs:
               apt-get update
 
               apt-get install -y \
-                git \
-                build-essential \
-                ninja-build \
-                pkg-config \
-                python3 \
-                python3-pip \
-                python3-mako \
-                python3-yaml \
-                python3-ply \
-                libdrm-dev \
-                libexpat1-dev \
-                libx11-dev \
-                libx11-xcb-dev \
-                libxcb1-dev \
-                libxcb-dri3-dev \
-                libxcb-present-dev \
-                libxcb-randr0-dev \
-                libxcb-shm0-dev \
-                libxcb-sync-dev \
-                libxcb-xfixes0-dev \
-                libxshmfence-dev \
-                libzstd-dev \
-                zlib1g-dev \
-                zstd \
-                file \
-                binutils \
-                glslang-tools \
-                ca-certificates
+              git \
+              build-essential \
+              ninja-build \
+              pkg-config \
+              python3 \
+              python3-pip \
+              python3-mako \
+              python3-yaml \
+              python3-ply \
+              bison \
+              byacc \
+              flex \
+              cmake \
+              libdrm-dev \
+              libexpat1-dev \
+              libx11-dev \
+              libx11-xcb-dev \
+              libxcb1-dev \
+              libxcb-dri3-dev \
+              libxcb-present-dev \
+              libxcb-randr0-dev \
+              libxcb-shm0-dev \
+              libxcb-sync-dev \
+              libxcb-xfixes0-dev \
+              libxshmfence-dev \
+              libzstd-dev \
+              zlib1g-dev \
+              zstd \
+              file \
+              binutils \
+              glslang-tools \
+              ca-certificates
 
               python3 -m pip install --upgrade pip
               python3 -m pip install "meson>=1.7.0" ninja
