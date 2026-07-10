@@ -54,9 +54,9 @@ jobs:
           needs_exe_wrapper = true
           EOF
 
-            - name: Configure Mesa Turnip
-        run: |
-          meson setup mesa/build mesa \
+          - name: Configure Mesa Turnip
+              run: |
+            meson setup mesa/build mesa \
             --cross-file "$GITHUB_WORKSPACE/aarch64-linux.txt" \
             --prefix=/usr \
             --buildtype=release \
