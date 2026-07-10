@@ -1,4 +1,4 @@
-name: Build Turnip MV Eclipse Base Frost GlibC
+name: Build Turnip MV Eclipse Base Frost GlibC ARM64
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Eclipse Base
+    name: Build Eclipse Base ARM64
     runs-on: ubuntu-22.04
 
     env:
@@ -20,97 +20,118 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Set up ARM64 emulation
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Verify ARM64 container
         run: |
-          sudo apt-get update
+          docker run --rm --platform linux/arm64 ubuntu:22.04 uname -m
 
-          sudo apt-get install -y \
-            git \
-            build-essential \
-            ninja-build \
-            pkg-config \
-            python3 \
-            python3-pip \
-            python3-mako \
-            python3-yaml \
-            python3-ply \
-            libdrm-dev \
-            libexpat1-dev \
-            libx11-dev \
-            libx11-xcb-dev \
-            libxcb1-dev \
-            libxcb-dri3-dev \
-            libxcb-present-dev \
-            libxcb-randr0-dev \
-            libxcb-shm0-dev \
-            libxcb-sync-dev \
-            libxcb-xfixes0-dev \
-            libxshmfence-dev \
-            libzstd-dev \
-            zlib1g-dev \
-            zstd \
-            file \
-            binutils \
-            glslang-tools
-
-          python3 -m pip install --upgrade pip
-          python3 -m pip install "meson>=1.7.0" ninja
-
-          echo "===================="
-          echo "Meson version:"
-          meson --version
-          echo "GLSLang version:"
-          glslangValidator --version
-          echo "===================="
-          echo "Ninja version:"
-          ninja --version
-
-      - name: Clone Mesa source
+      - name: Build Turnip inside ARM64 Ubuntu
         run: |
-          git clone \
-            https://gitlab.freedesktop.org/mesa/mesa.git \
-            mesa
+          docker run --rm \
+            --platform linux/arm64 \
+            -e GITHUB_WORKSPACE=/work \
+            -e DRIVER_NAME="${DRIVER_NAME}" \
+            -e DRIVER_VERSION="${DRIVER_VERSION}" \
+            -e MESA_VERSION="${MESA_VERSION}" \
+            -v "${GITHUB_WORKSPACE}:/work" \
+            -w /work \
+            ubuntu:22.04 \
+            bash -lc '
+              set -euo pipefail
 
-          cd mesa
-          git checkout "${MESA_VERSION}"
+              export DEBIAN_FRONTEND=noninteractive
 
-          echo "Mesa version:"
-          git describe --tags --always
+              apt-get update
 
-          echo "Mesa commit:"
-          git rev-parse HEAD
+              apt-get install -y \
+                git \
+                build-essential \
+                ninja-build \
+                pkg-config \
+                python3 \
+                python3-pip \
+                python3-mako \
+                python3-yaml \
+                python3-ply \
+                libdrm-dev \
+                libexpat1-dev \
+                libx11-dev \
+                libx11-xcb-dev \
+                libxcb1-dev \
+                libxcb-dri3-dev \
+                libxcb-present-dev \
+                libxcb-randr0-dev \
+                libxcb-shm0-dev \
+                libxcb-sync-dev \
+                libxcb-xfixes0-dev \
+                libxshmfence-dev \
+                libzstd-dev \
+                zlib1g-dev \
+                zstd \
+                file \
+                binutils \
+                glslang-tools \
+                ca-certificates
 
-      - name: Prepare scripts
+              python3 -m pip install --upgrade pip
+              python3 -m pip install "meson>=1.7.0" ninja
+
+              echo "Architecture:"
+              uname -m
+
+              echo "Meson:"
+              meson --version
+
+              echo "Ninja:"
+              ninja --version
+
+              echo "GLSLang:"
+              glslangValidator --version
+
+              rm -rf mesa build install output
+
+              git clone \
+                https://gitlab.freedesktop.org/mesa/mesa.git \
+                mesa
+
+              cd mesa
+              git checkout "${MESA_VERSION}"
+              git rev-parse HEAD
+              cd ..
+
+              chmod +x scripts/build.sh
+              chmod +x scripts/package.sh
+
+              scripts/build.sh
+              scripts/package.sh
+            '
+
+      - name: Verify generated ARM64 binary
         run: |
-          chmod +x scripts/build.sh
-          chmod +x scripts/package.sh
-
-      - name: Build Turnip MV Eclipse Base
-        run: |
-          scripts/build.sh
-
-      - name: Package Frost GlibC driver
-        run: |
-          scripts/package.sh
-
-      - name: Inspect generated binary
-        run: |
-          echo "Driver information:"
           file install/package/usr/lib/libvulkan_freedreno.so
 
-          echo "Dynamic dependencies:"
-          ldd install/package/usr/lib/libvulkan_freedreno.so || true
+          if ! file install/package/usr/lib/libvulkan_freedreno.so | grep -qiE "ARM aarch64|ARM64"; then
+            echo "ERROR: el driver no fue generado para ARM64/AArch64."
+            exit 1
+          fi
 
-          echo "ELF dynamic section:"
+          echo "ELF header:"
+          readelf -h install/package/usr/lib/libvulkan_freedreno.so
+
+          echo "Dynamic dependencies:"
           readelf -d install/package/usr/lib/libvulkan_freedreno.so || true
 
           echo "Generated files:"
           find output -maxdepth 2 -type f -print
 
-      - name: Upload Eclipse Base driver
+      - name: Upload Eclipse Base ARM64 driver
         uses: actions/upload-artifact@v4
         with:
-          name: Turnip-MV-Eclipse-Base-Frost-GlibC
+          name: Turnip-MV-Eclipse-Base-Frost-GlibC-ARM64
           path: |
             output/turnip-MV-Eclipse-Base-Frost-GlibC.tzst
             output/SHA256SUMS.txt
@@ -122,9 +143,8 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: Turnip-MV-Eclipse-Base-build-logs
+          name: Turnip-MV-Eclipse-Base-ARM64-build-logs
           path: |
             build/meson-logs/
           if-no-files-found: ignore
           retention-days: 14
-          
