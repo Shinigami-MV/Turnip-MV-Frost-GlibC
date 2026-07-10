@@ -5,113 +5,72 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install build tools
+      - name: Install packages
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt update
+          sudo apt install -y \
             git \
-            python3-pip \
-            python3-mako \
-            python3-yaml \
             meson \
             ninja-build \
+            python3-mako \
+            python3-yaml \
             pkg-config \
             zstd \
-            tar \
             gcc-aarch64-linux-gnu \
             g++-aarch64-linux-gnu \
             libdrm-dev \
-            libexpat1-dev \
-            libzstd-dev
+            libexpat1-dev
 
       - name: Clone Mesa
         run: |
-          git clone --depth=1 https://gitlab.freedesktop.org/mesa/mesa.git mesa
+          git clone --depth=1 https://gitlab.freedesktop.org/mesa/mesa.git
 
-      - name: Create cross file
+      - name: Verify clone
         run: |
-          cat > aarch64-linux.txt <<'EOF'
+          ls -la
+          ls -la mesa
+
+      - name: Generate cross file
+        shell: bash
+        run: |
+          cat <<EOF > aarch64-linux.txt
           [binaries]
-          c = 'aarch64-linux-gnu-gcc'
-          cpp = 'aarch64-linux-gnu-g++'
-          ar = 'aarch64-linux-gnu-ar'
-          strip = 'aarch64-linux-gnu-strip'
-          pkg-config = 'pkg-config'
+          c='aarch64-linux-gnu-gcc'
+          cpp='aarch64-linux-gnu-g++'
+          ar='aarch64-linux-gnu-ar'
+          strip='aarch64-linux-gnu-strip'
+          pkgconfig='pkg-config'
 
           [host_machine]
-          system = 'linux'
-          cpu_family = 'aarch64'
-          cpu = 'aarch64'
-          endian = 'little'
-
-          [properties]
-          needs_exe_wrapper = true
+          system='linux'
+          cpu_family='aarch64'
+          cpu='aarch64'
+          endian='little'
           EOF
 
-          - name: Configure Mesa Turnip
-              run: |
-            meson setup mesa/build mesa \
-            --cross-file "$GITHUB_WORKSPACE/aarch64-linux.txt" \
-            --prefix=/usr \
-            --buildtype=release \
-            -Dplatforms=x11 \
-            -Dgallium-drivers= \
+      - name: Configure Mesa
+        run: |
+          meson setup build mesa \
+            --cross-file=aarch64-linux.txt \
             -Dvulkan-drivers=freedreno \
-            -Dfreedreno-kmds=kgsl \
-            -Dglx=disabled \
-            -Degl=disabled \
-            -Dgbm=disabled \
-            -Dllvm=disabled \
-            -Dshared-glapi=disabled \
-            -Dbuild-tests=false
-      - name: Compile
+            -Dgallium-drivers= \
+            -Dplatforms=x11 \
+            -Dbuildtype=release
+
+      - name: Build
         run: |
-          ninja -C mesa/build
+          ninja -C build
 
-      - name: Prepare Frost package
-        run: |
-          mkdir -p package/usr/lib
-          mkdir -p package/usr/share/vulkan/icd.d
-
-          DRIVER="$(find mesa/build -type f -name 'libvulkan_freedreno.so' | head -n 1)"
-
-          if [ -z "$DRIVER" ]; then
-            echo "No se encontró libvulkan_freedreno.so"
-            exit 1
-          fi
-
-          cp "$DRIVER" package/usr/lib/libvulkan_freedreno.so
-
-          cat > package/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json <<'EOF'
-          {
-            "file_format_version": "1.0.0",
-            "ICD": {
-              "library_path": "/usr/lib/libvulkan_freedreno.so",
-              "api_version": "1.3.0"
-            }
-          }
-          EOF
-
-      - name: Create TZST package
-        run: |
-          tar -C package -cf turnip-MV-Eclipse-R3-Frost.tar .
-          zstd -19 turnip-MV-Eclipse-R3-Frost.tar \
-            -o turnip-MV-Eclipse-R3-Frost.tzst
-
-      - name: Generate checksum
-        run: |
-          sha256sum turnip-MV-Eclipse-R3-Frost.tzst > SHA256SUMS.txt
-
-      - name: Upload build
+      - name: Upload logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Turnip-MV-Eclipse-R3-Frost
+          name: build-logs
           path: |
-            turnip-MV-Eclipse-R3-Frost.tzst
-            SHA256SUMS.txt
+            build/meson-logs
