@@ -131,7 +131,15 @@ jobs:
 
           echo "Generated files:"
           find output -maxdepth 2 -type f -print
-
+      
+      - name: Fix artifact permissions
+        shell: bash
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" output
+          chmod -R u+rwX,go+rX output
+          echo "Files prepared for upload:"
+          ls -la output
+   
       - name: Upload Eclipse Base ARM64 driver
         uses: actions/upload-artifact@v4
         with:
