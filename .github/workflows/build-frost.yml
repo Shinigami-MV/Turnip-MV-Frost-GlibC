@@ -1,4 +1,4 @@
-ñname: Build Turnip MV Eclipse Base Frost GlibC
+name: Build Turnip MV Eclipse Base Frost GlibC
 
 on:
   workflow_dispatch:
