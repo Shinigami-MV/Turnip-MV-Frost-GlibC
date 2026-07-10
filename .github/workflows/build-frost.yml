@@ -1,4 +1,4 @@
-name: Build Turnip MV Eclipse Base Frost GlibC
+ñname: Build Turnip MV Eclipse Base Frost GlibC
 
 on:
   workflow_dispatch:
@@ -50,7 +50,8 @@ jobs:
             zlib1g-dev \
             zstd \
             file \
-            binutils
+            binutils \
+            glslang-tools
 
           python3 -m pip install --upgrade pip
           python3 -m pip install "meson>=1.7.0" ninja
@@ -58,6 +59,8 @@ jobs:
           echo "===================="
           echo "Meson version:"
           meson --version
+          echo "GLSLang version:"
+          glslangValidator --version
           echo "===================="
           echo "Ninja version:"
           ninja --version
