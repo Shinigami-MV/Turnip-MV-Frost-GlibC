@@ -27,7 +27,6 @@ jobs:
           sudo apt-get install -y \
             git \
             build-essential \
-            meson \
             ninja-build \
             pkg-config \
             python3 \
@@ -52,6 +51,16 @@ jobs:
             zstd \
             file \
             binutils
+
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "meson>=1.7.0" ninja
+
+          echo "===================="
+          echo "Meson version:"
+          meson --version
+          echo "===================="
+          echo "Ninja version:"
+          ninja --version
 
       - name: Clone Mesa source
         run: |
@@ -115,3 +124,4 @@ jobs:
             build/meson-logs/
           if-no-files-found: ignore
           retention-days: 14
+          
